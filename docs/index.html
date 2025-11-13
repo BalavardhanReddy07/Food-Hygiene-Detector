@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hygein Detector — Cloud Edition</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0066ff;
+            --success: #00cc44;
+            --danger: #ff3333;
+        }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .navbar {
+            background: rgba(0,0,0,0.7) !important;
+            backdrop-filter: blur(10px);
+        }
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+        }
+        .container-main {
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.95);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+        .card-title {
+            color: #333;
+            font-weight: 600;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+        }
+        .btn-primary {
+            background: linear-gradient(90deg, var(--primary), #00a1ff);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0,102,255,0.4);
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .status-active {
+            background: var(--success);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+        .status-inactive {
+            background: #ffcc00;
+            color: #333;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .video-container {
+            background: #000;
+            border-radius: 12px;
+            padding: 10px;
+            overflow: hidden;
+            aspect-ratio: 16/9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .video-container img, .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .upload-zone {
+            border: 2px dashed var(--primary);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            background: #f8f9ff;
+        }
+        .upload-zone:hover {
+            border-color: #00a1ff;
+            background: #f0f4ff;
+        }
+        .upload-zone.dragover {
+            border-color: var(--success);
+            background: #f0fff4;
+        }
+        .predictions-result {
+            background: #f8f9ff;
+            border-left: 4px solid var(--primary);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .prediction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .prediction-item:last-child {
+            border-bottom: none;
+        }
+        .confidence-bar {
+            width: 100px;
+            height: 6px;
+            background: #ddd;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--danger), var(--success));
+            border-radius: 3px;
+        }
+        .alert-custom {
+            border-radius: 12px;
+            border: none;
+            padding: 15px 20px;
+        }
+        .footer {
+            background: rgba(0,0,0,0.5);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            margin-top: 40px;
+            border-radius: 15px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-box {
+            background: linear-gradient(135deg, var(--primary), #00a1ff);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+        .stat-label {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">🐭 Hygein Detector</a>
+            <div class="d-flex text-white align-items-center gap-3">
+                <small id="modelStatus">
+                    <span class="status-badge status-inactive">Connecting...</span>
+                </small>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container container-main">
+        <!-- IMPORTANT: Configure your backend URL here -->
+        <div class="alert alert-warning alert-custom" id="configAlert">
+            ⚙️ <strong>Backend URL:</strong> <code id="backendUrl">http://localhost:5000</code>
+            <small class="d-block mt-2">Change this to your deployed Flask backend URL (Railway, Render, etc.)</small>
+        </div>
+
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-lg-8 mb-4">
+                <!-- Live Feed Card -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">📹 Live Camera Feed</h5>
+                        <div class="video-container">
+                            <img id="videoStream" src="" alt="Live feed unavailable" 
+                                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%2260%22%3E%3Crect fill=%22%23333%22 width=%22100%22 height=%2260%22/%3E%3Ctext fill=%22%23999%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Feed%3C/text%3E%3C/svg%3E'">
+                        </div>
+                        <small class="text-muted d-block mt-2">✓ Auto-refreshes every frame</small>
+                    </div>
+                </div>
+
+                <!-- Image Upload Card -->
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">📤 Upload Image for Detection</h5>
+                        <div class="upload-zone" id="uploadZone">
+                            <div style="font-size: 2rem; margin-bottom: 10px;">📸</div>
+                            <p><strong>Drag & drop an image here</strong></p>
+                            <p style="color: #666; font-size: 0.9rem;">or click to browse</p>
+                            <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                        </div>
+                        <button class="btn btn-primary w-100 mt-3" id="predictBtn" disabled>
+                            Analyze Image
+                        </button>
+
+                        <div id="predictResult"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-lg-4">
+                <!-- Status Card -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">📊 System Status</h5>
+                        <div class="stats-grid">
+                            <div class="stat-box">
+                                <div class="stat-value" id="modelType">-</div>
+                                <div class="stat-label">Model Type</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value" id="confThreshold">60%</div>
+                                <div class="stat-label">Threshold</div>
+                            </div>
+                        </div>
+                        <ul class="list-unstyled mt-3">
+                            <li><strong>Status:</strong> <span id="connectionStatus">
+                                <span class="status-badge status-inactive">Offline</span>
+                            </span></li>
+                            <li><strong>Classes:</strong> <span id="classesSpan">Loading...</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Info Card -->
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">ℹ️ About</h5>
+                        <p style="font-size: 0.9rem; margin: 0;">
+                            Real-time pest detection using deep learning. Detects insects and rats with high accuracy.
+                        </p>
+                        <hr>
+                        <p style="font-size: 0.85rem; color: #666; margin: 0;">
+                            <strong>Colors:</strong><br>
+                            🟢 Green = Clean (Hygienic)<br>
+                            🔴 Red = Pest Detected
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© 2025 Hygein Detector • Powered by TensorFlow & YOLO</p>
+        </div>
+    </div>
+
+    <!-- Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // ============================================================
+        // CONFIGURATION: Change this to your deployed backend
+        // ============================================================
+        const BACKEND_URL = localStorage.getItem('backendUrl') || 'http://localhost:5000';
+        
+        // Save in localStorage for persistence
+        document.getElementById('backendUrl').innerText = BACKEND_URL;
+
+        // Allow user to change it
+        document.getElementById('backendUrl').addEventListener('click', function() {
+            const newUrl = prompt('Enter your backend URL:', BACKEND_URL);
+            if (newUrl) {
+                localStorage.setItem('backendUrl', newUrl);
+                location.reload();
+            }
+        });
+
+        // ============================================================
+        // API CALLS
+        // ============================================================
+        async function checkModelStatus() {
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/status`);
+                if (!res.ok) throw new Error('Backend unreachable');
+                
+                const data = await res.json();
+                document.getElementById('connectionStatus').innerHTML = 
+                    `<span class="status-badge status-active">✓ Connected</span>`;
+                document.getElementById('modelType').innerText = data.model_type;
+                document.getElementById('classesSpan').innerText = 
+                    (Array.isArray(data.classes) ? data.classes : Object.values(data.classes)).join(', ');
+            } catch (e) {
+                document.getElementById('connectionStatus').innerHTML = 
+                    `<span class="status-badge status-inactive">✗ Offline</span>`;
+                console.log('Backend status check failed:', e);
+            }
+        }
+
+        // Check status every 5 seconds
+        checkModelStatus();
+        setInterval(checkModelStatus, 5000);
+
+        // Live stream
+        function updateVideoStream() {
+            const img = document.getElementById('videoStream');
+            img.src = `${BACKEND_URL}/video_feed?t=${Date.now()}`;
+        }
+        updateVideoStream();
+        setInterval(updateVideoStream, 1000);
+
+        // ============================================================
+        // IMAGE UPLOAD
+        // ============================================================
+        const uploadZone = document.getElementById('uploadZone');
+        const imageInput = document.getElementById('imageInput');
+        const predictBtn = document.getElementById('predictBtn');
+
+        uploadZone.addEventListener('click', () => imageInput.click());
+        
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) {
+                imageInput.files = e.dataTransfer.files;
+                predictBtn.disabled = false;
+                uploadZone.innerText = '✓ Image selected';
+            }
+        });
+
+        imageInput.addEventListener('change', () => {
+            predictBtn.disabled = !imageInput.files[0];
+            if (imageInput.files[0]) {
+                uploadZone.innerText = `✓ ${imageInput.files[0].name}`;
+            }
+        });
+
+        // Predict
+        predictBtn.addEventListener('click', async () => {
+            if (!imageInput.files[0]) return;
+            
+            predictBtn.disabled = true;
+            predictBtn.innerText = 'Analyzing...';
+
+            const fd = new FormData();
+            fd.append('image', imageInput.files[0]);
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/predict_image`, 
+                    { method: 'POST', body: fd });
+                
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                
+                const json = await res.json();
+                displayResults(json);
+            } catch (e) {
+                showError(`Prediction failed: ${e.message}`);
+            } finally {
+                predictBtn.disabled = false;
+                predictBtn.innerText = 'Analyze Image';
+            }
+        });
+
+        function displayResults(data) {
+            const resultDiv = document.getElementById('predictResult');
+            
+            if (!data.predictions || data.predictions.length === 0) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success alert-custom mt-3">
+                        ✓ No pests detected. Environment is clean.
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="predictions-result"><strong>Detections:</strong>';
+            
+            data.predictions.forEach(p => {
+                const conf = (p.confidence * 100).toFixed(1);
+                const isPest = !p.label.toLowerCase().includes('hygi');
+                const icon = isPest ? '🔴' : '🟢';
+                
+                html += `
+                    <div class="prediction-item">
+                        <div>
+                            <strong>${icon} ${p.label}</strong><br>
+                            <span style="font-size: 0.85rem; color: #666;">Confidence</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 700; color: ${isPest ? '#ff3333' : '#00cc44'};">${conf}%</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${conf}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (data.download_url) {
+                html += `<br><a class="btn btn-sm btn-outline-primary" href="${BACKEND_URL}${data.download_url}" target="_blank">
+                    📥 Download Annotated Image
+                </a>`;
+            }
+
+            html += '</div>';
+            resultDiv.innerHTML = html;
+        }
+
+        function showError(msg) {
+            document.getElementById('predictResult').innerHTML = 
+                `<div class="alert alert-danger alert-custom mt-3">${msg}</div>`;
+        }
+    </script>
+</body>
+</html>
