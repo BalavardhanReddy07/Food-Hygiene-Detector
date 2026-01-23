@@ -299,7 +299,6 @@
         const API_STATUS_ENDPOINT = '/api/status';
         const PREDICT_ENDPOINT = '/api/predict_image';
         const CAPTURE_ENDPOINT = '/api/capture_frame';
-        // Note: SNAPSHOT_BASE is no longer used for retrieval, only logic check
         
         const $ = (id) => document.getElementById(id);
 
@@ -317,7 +316,7 @@
         const imageStatusCard = $('image-status-card');
         const imageStatusLabel = $('image-status-label');
         const imageStatusDescription = $('image-status-description');
-        const liveVideo = $('live-video-element'); // Updated from img to video
+        const liveVideo = $('live-video-element'); 
         const livePlaceholder = $('live-placeholder');
         const startPreviewBtn = $('start-preview-btn');
         const captureAnalyzeBtn = $('capture-analyze-btn');
@@ -337,14 +336,13 @@
         let captureInProgress = false;
         let videoStream = null;
 
-        // NEW Modal Logic for Base64 Data
         function openReviewData(eventId) {
             const event = statsManager.data.events.find(e => e.id === eventId);
             if (event && event.snapshotData) {
                 const modal = $('review-modal');
                 const img = $('review-image');
                 $('modal-title').textContent = `Review: ${event.primaryCategory}`;
-                img.src = event.snapshotData; // Load Base64 directly
+                img.src = event.snapshotData;
                 modal.classList.remove('hidden');
             }
         }
@@ -372,24 +370,23 @@
             'Clean', 'Contaminant', 'Hair', 'Yeast', 'Fungus', 'Mold', 'Rotten', 'Insects', 'Rodent'
         ];
 
-        // Color mapping
         const CATEGORY_COLORS = {
-            'Rodent': '#dc2626',      // Red
-            'Cat': '#636B2F',         // Olive
-            'Dog': '#2563eb',         // Blue
-            'Insects': '#ea580c',     // Orange-Red
-            'Rotten': '#87CEEB',      // Sky Blue
-            'Mold': '#65a30d',        // Lime Green
-            'Fungus': '#4d7c0f',      // Dark Green
-            'Yeast': '#ca8a04',       // Yellow-Gold
-            'Hair': '#9333ea',        // Purple
-            'Contaminant': '#0891b2', // Cyan
-            'Clean': '#10b981',       // Emerald Green
-            'Unknown': '#6b7280'      // Gray
+            'Rodent': '#dc2626',      
+            'Cat': '#636B2F',         
+            'Dog': '#2563eb',         
+            'Insects': '#ea580c',     
+            'Rotten': '#87CEEB',      
+            'Mold': '#65a30d',        
+            'Fungus': '#4d7c0f',      
+            'Yeast': '#ca8a04',       
+            'Hair': '#9333ea',        
+            'Contaminant': '#0891b2', 
+            'Clean': '#10b981',       
+            'Unknown': '#6b7280'      
         };
 
         // ==============================
-        // STATS MANAGER (Data Persistence)
+        // STATS MANAGER
         // ==============================
         class StatsManager {
             constructor() {
@@ -476,13 +473,10 @@
                     id: Math.random().toString(36).substr(2, 9),
                     timestamp: ts.toISOString(),
                     primaryCategory: primaryCategory,
-                    // Store base64 data directly
                     snapshotData: frameImageBase64 ? "data:image/jpeg;base64," + frameImageBase64 : null
                 };
 
                 this.data.events.push(event);
-                
-                // Limit to last 15 items to prevent LocalStorage overflow
                 if (this.data.events.length > 15) {
                     this.data.events = this.data.events.slice(this.data.events.length - 15);
                 }
@@ -575,7 +569,6 @@
                 
                 pageItems.forEach(e => {
                     const tr = document.createElement('tr');
-                    // Use openReviewData(e.id) instead of passing the snapshot path
                     const reviewHtml = e.snapshotData 
                         ? `<span class="action-icon" onclick="openReviewData('${e.id}')" title="View Snapshot"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>` 
                         : `<span style="color:#9ca3af;display:flex;justify-content:center;">--</span>`;
@@ -606,7 +599,7 @@
         const statsManager = new StatsManager();
 
         // ==============================
-        // REPORT GENERATION
+        // REPORT GENERATION (FIXED)
         // ==============================
         async function generateReport() {
             const { jsPDF } = window.jspdf;
@@ -627,19 +620,115 @@
 
                 // Header
                 updateProgress(20, 'Adding header...');
-                pdf.setFillColor(99, 102, 241); pdf.rect(0, 0, pageWidth, 35, 'F'); pdf.setTextColor(255, 255, 255); pdf.setFontSize(24); pdf.setFont(undefined, 'bold'); pdf.text('Food Hygiene Detection Report', margin, 20); pdf.setFontSize(10); pdf.setFont(undefined, 'normal'); pdf.text(`Generated: ${new Date().toLocaleString()}`, margin, 28);
-                yPos = 45; pdf.setTextColor(0, 0, 0);
+                pdf.setFillColor(99, 102, 241); 
+                pdf.rect(0, 0, pageWidth, 35, 'F'); 
+                pdf.setTextColor(255, 255, 255); 
+                pdf.setFontSize(24); 
+                pdf.setFont(undefined, 'bold'); 
+                pdf.text('Food Hygiene Detection Report', margin, 20); 
+                pdf.setFontSize(10); 
+                pdf.setFont(undefined, 'normal'); 
+                pdf.text(`Generated: ${new Date().toLocaleString()}`, margin, 28);
+                yPos = 45; 
+                pdf.setTextColor(0, 0, 0);
 
-                // Stats Section
-                updateProgress(30, 'Adding stats...');
+                // --- 1. Summary Statistics (FIXED) ---
+                updateProgress(30, 'Calculating stats...');
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Summary Statistics', margin, yPos);
+                yPos += 8;
+
                 const stats = statsManager.data.events;
-                // ... (Stats calculation same as before) ...
+                const types = {};
+                stats.forEach(e => {
+                    if(e.primaryCategory !== 'Clean') {
+                        types[e.primaryCategory] = (types[e.primaryCategory] || 0) + 1;
+                    }
+                });
+
+                let maxType = '-';
+                let maxCount = 0;
+                for (const [t, c] of Object.entries(types)) {
+                    if (c > maxCount) { maxCount = c; maxType = t; }
+                }
+
+                pdf.setFontSize(10);
+                pdf.setFont(undefined, 'normal');
                 
-                // Detection Images
+                const boxHeight = 20;
+                const boxWidth = (contentWidth - 10) / 3;
+                
+                // Box 1: Total Threats
+                pdf.setFillColor(239, 246, 255); // Light Blue
+                pdf.rect(margin, yPos, boxWidth, boxHeight, 'F');
+                pdf.setDrawColor(191, 219, 254);
+                pdf.rect(margin, yPos, boxWidth, boxHeight);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Total Threats', margin + 3, yPos + 7);
+                pdf.setFontSize(18);
+                pdf.text(String(stats.length), margin + 3, yPos + 15);
+                
+                // Box 2: Threat Types
+                pdf.setFontSize(10);
+                pdf.setFillColor(243, 244, 246); // Gray
+                pdf.rect(margin + boxWidth + 5, yPos, boxWidth, boxHeight, 'F');
+                pdf.setDrawColor(209, 213, 219);
+                pdf.rect(margin + boxWidth + 5, yPos, boxWidth, boxHeight);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Threat Types', margin + boxWidth + 8, yPos + 7);
+                pdf.setFontSize(18);
+                pdf.text(String(Object.keys(types).length), margin + boxWidth + 8, yPos + 15);
+                
+                // Box 3: Dominant Threat
+                pdf.setFontSize(10);
+                pdf.setFillColor(254, 242, 242); // Light Red
+                pdf.rect(margin + (boxWidth + 5) * 2, yPos, boxWidth, boxHeight, 'F');
+                pdf.setDrawColor(254, 202, 202);
+                pdf.rect(margin + (boxWidth + 5) * 2, yPos, boxWidth, boxHeight);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Dominant Threat', margin + (boxWidth + 5) * 2 + 3, yPos + 7);
+                pdf.setFontSize(12);
+                pdf.text(maxType, margin + (boxWidth + 5) * 2 + 3, yPos + 15);
+
+                yPos += boxHeight + 15;
+
+                // --- 2. Chart (FIXED) ---
+                updateProgress(50, 'Capturing chart...');
+                const chartCanvas = $('mainChart');
+                if (chartCanvas && statsManager.chartInstance) {
+                    try {
+                        const chartImage = chartCanvas.toDataURL('image/png');
+                        const chartHeight = 80;
+                        
+                        pdf.setFontSize(14);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.text('Contamination Trends', margin, yPos);
+                        yPos += 8;
+                        
+                        pdf.addImage(chartImage, 'PNG', margin, yPos, contentWidth, chartHeight);
+                        yPos += chartHeight + 10;
+                    } catch (e) {
+                        console.error('Chart capture error:', e);
+                    }
+                }
+
+                // Check for page break
+                if (yPos > pageHeight - 60) {
+                    pdf.addPage();
+                    yPos = margin;
+                }
+
+                // --- 3. Detection Images ---
                 updateProgress(85, 'Processing detection images...');
+                
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Detection Images', margin, yPos);
+                yPos += 10;
+
                 const eventsWithSnapshots = stats.filter(e => e.snapshotData).slice().reverse().slice(0, 12);
                 
-                // ... (Image adding logic: Note we now use e.snapshotData directly) ...
                 if (eventsWithSnapshots.length > 0) {
                     const imagesPerRow = 3;
                     const imageWidth = (contentWidth - 10) / imagesPerRow;
@@ -650,22 +739,31 @@
                         const col = i % imagesPerRow;
                         const row = Math.floor(i / imagesPerRow);
                         
-                        if (yPos > pageHeight - 60) { pdf.addPage(); yPos = margin; }
+                        if (yPos + imageHeight + 20 > pageHeight - margin) {
+                            pdf.addPage();
+                            yPos = margin;
+                        }
 
                         const xPos = margin + (col * (imageWidth + 5));
                         const currentYPos = yPos + (row % 4) * (imageHeight + 15);
 
                         try {
-                            // Directly use Base64 string
                             pdf.addImage(event.snapshotData, 'JPEG', xPos, currentYPos, imageWidth, imageHeight);
-                            pdf.setFontSize(7); pdf.setFont(undefined, 'bold');
+                            pdf.setFontSize(7); 
+                            pdf.setFont(undefined, 'bold');
                             pdf.text(event.primaryCategory, xPos, currentYPos + imageHeight + 4);
                             pdf.setFont(undefined, 'normal');
                             pdf.text(new Date(event.timestamp).toLocaleDateString(), xPos, currentYPos + imageHeight + 8);
                         } catch (err) { }
 
-                        if ((i + 1) % imagesPerRow === 0) { yPos += imageHeight + 15; }
+                        if ((i + 1) % imagesPerRow === 0) {
+                            yPos += imageHeight + 15;
+                        }
                     }
+                } else {
+                    pdf.setFontSize(10);
+                    pdf.setFont(undefined, 'normal');
+                    pdf.text('No detection images available', margin, yPos);
                 }
 
                 updateProgress(95, 'Finalizing PDF...');
@@ -784,7 +882,6 @@
                 if (!res.ok) throw new Error('Analysis failed');
                 const data = await res.json();
                 renderPredictions(data.predictions);
-                // PASSING Base64 IMAGE
                 statsManager.addAnalysisEvent(data.predictions, data.timestamp_iso, null, data.frame_image);
                 updateImageStatusUI(data.predictions);
                 if (data.frame_image) { previewImage.src = 'data:image/jpeg;base64,' + data.frame_image; }
@@ -806,7 +903,6 @@
         async function startPreview() {
             if (previewActive) return;
             try {
-                // Request Camera Access (Smart Client)
                 videoStream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } 
                 });
@@ -849,17 +945,14 @@
             captureAnalyzeBtn.disabled = true;
             logLive('Capturing frame...');
             try {
-                // 1. Capture to canvas
                 const canvas = document.createElement('canvas');
                 canvas.width = liveVideo.videoWidth;
                 canvas.height = liveVideo.videoHeight;
                 canvas.getContext('2d').drawImage(liveVideo, 0, 0);
                 
-                // 2. Compress (Client-Side)
                 const imageBase64 = canvas.toDataURL('image/jpeg', 0.8);
                 logLive('Frame captured. Sending...');
 
-                // 3. Send to Server
                 const res = await fetch(CAPTURE_ENDPOINT, { 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -872,7 +965,6 @@
                 if (data.frame_image) captureResultImage.src = 'data:image/jpeg;base64,' + data.frame_image;
                 
                 renderPredictions(data.predictions, capturePredictionsList);
-                // 4. Save to History (Base64)
                 statsManager.addAnalysisEvent(data.predictions, data.timestamp_iso, null, data.frame_image);
                 updateCaptureStatusUI(data.predictions);
                 captureResultSection.classList.remove('hidden');
