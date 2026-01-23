@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Food Hygiene Detector</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="page-root">
+        <header class="app-header">
+            <div class="header-content">
+                <div class="brand">
+                    <div class="brand-mark">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="brand-title">Food Hygiene Detector</h1>
+                        <p class="brand-subtitle">Advanced Food Safety & Contamination Monitoring</p>
+                    </div>
+                </div>
+
+                <nav class="nav-bar">
+                    <button class="nav-item active" onclick="switchView('home')">Live Detection</button>
+                    <button class="nav-item" onclick="switchView('stats')">History & Stats</button>
+                </nav>
+
+                <div class="status-pill" id="backend-status-pill">
+                    <span class="status-dot status-dot-off"></span>
+                    <span id="backend-status-text">Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content" id="view-home">
+            <section class="section-card">
+                <div class="section-header">
+                    <div class="section-title-group">
+                        <h2>Image Analysis</h2>
+                        <p>Upload a food or surface image to detect contamination indicators</p>
+                    </div>
+                    <span class="chip chip-primary">Single Image</span>
+                </div>
+
+                <div class="section-body">
+                    <div class="upload-area">
+                        <div class="upload-zone" id="upload-zone">
+                            <input type="file" id="image-input" accept="image/*" hidden />
+                            <div class="upload-illustration">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M17 8L12 3M12 3L7 8M12 3V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <div class="upload-text">
+                                <p class="upload-title">Drop an image here or <button id="browse-btn" type="button">browse</button></p>
+                                <p class="upload-hint">Supported formats: JPG, PNG • Max 16 MB</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="analysis-grid">
+                        <div class="preview-column">
+                            <h3>Preview</h3>
+                            <div class="image-frame" id="preview-frame">
+                                <span class="placeholder-text">No image selected</span>
+                                <img id="preview-image" alt="Preview" />
+                            </div>
+                        </div>
+
+                        <div class="result-column">
+                            <div class="result-header">
+                                <h3>Analysis Result</h3>
+                                <button id="analyze-btn" class="btn-primary" disabled>Analyze Image</button>
+                            </div>
+
+                            <div id="upload-progress" class="progress-row hidden">
+                                <div class="spinner"></div>
+                                <span id="upload-progress-text">Analyzing image…</span>
+                            </div>
+
+                            <div class="status-card" id="image-status-card">
+                                <div class="status-main">
+                                    <span id="image-status-label" class="status-tag status-tag-idle">Waiting for image…</span>
+                                    <span id="image-contamination-score" class="score-pill">–</span>
+                                </div>
+                                <p id="image-status-description" class="status-description">
+                                    Upload an image to see a contamination assessment.
+                                </p>
+                            </div>
+
+                            <div class="predictions-list" id="predictions-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section-card">
+                <div class="section-header">
+                    <div class="section-title-group">
+                        <h2>Live Camera Analysis</h2>
+                        <p>Capture and analyze frames in real-time using your webcam</p>
+                    </div>
+                    <span class="chip chip-accent">On-Demand</span>
+                </div>
+
+                <div class="section-body">
+                    <div class="webcam-grid">
+                        <div class="video-container">
+                            <div class="video-header">
+                                <span class="live-indicator" id="live-indicator">
+                                    <span class="live-dot"></span> Camera Preview
+                                </span>
+                                <span class="fps-label" id="fps-label">Ready</span>
+                            </div>
+                            <div class="video-frame">
+                                <video id="live-video-element" class="hidden" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+                                <div id="live-placeholder" class="placeholder-overlay">
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M23 7L16 12L23 17V7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <rect x="1" y="5" width="15" height="14" rx="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <p>Click "Start Preview" to connect to your camera</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="controls-panel">
+                            <h3>Controls</h3>
+                            <div class="controls-stack">
+                                <button id="start-preview-btn" class="btn-primary btn-block">Start Preview</button>
+                                <button id="capture-analyze-btn" class="btn-accent btn-block" disabled>Capture & Analyze</button>
+                                <button id="stop-preview-btn" class="btn-secondary btn-block" disabled>Stop Preview</button>
+                            </div>
+
+                            <div class="status-card" id="live-status-card">
+                                <div class="status-main">
+                                    <span id="live-status-label" class="status-tag status-tag-idle">Ready</span>
+                                    <span id="live-threat-level" class="score-pill">–</span>
+                                </div>
+                                <p id="live-status-description" class="status-description">
+                                    Start preview and click "Capture & Analyze" to run detection.
+                                </p>
+                            </div>
+
+                            <div class="mini-log-container">
+                                <h4>Activity Log</h4>
+                                <div class="mini-log" id="live-log"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="capture-result-section" class="capture-result-section hidden">
+                        <div class="divider"></div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 class="capture-result-title" style="margin-bottom: 0;">Capture Analysis Result</h3>
+                            <button type="button" onclick="closeCaptureResult()" title="Close Result" style="background: none; border: none; font-size: 2rem; line-height: 1; color: #6b7280; cursor: pointer; padding: 0 0.5rem;">&times;</button>
+                        </div>
+
+                        <div class="capture-result-grid">
+                            <div class="capture-result-preview">
+                                <img id="capture-result-image" alt="Captured frame">
+                            </div>
+                            <div class="capture-result-analysis">
+                                <div class="status-card" id="capture-status-card">
+                                    <div class="status-main">
+                                        <span id="capture-status-label" class="status-tag status-tag-idle">Analyzed</span>
+                                        <span id="capture-threat-level" class="score-pill">–</span>
+                                    </div>
+                                    <p id="capture-status-description" class="status-description">
+                                        Capture analysis results appear here.
+                                    </p>
+                                </div>
+                                <div class="predictions-list" id="capture-predictions-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <main class="main-content hidden" id="view-stats">
+            <section class="stats-header">
+                <div class="section-title-group">
+                    <h2>History & Statistics</h2>
+                    <p>Track contamination trends over time</p>
+                </div>
+                <div class="stats-actions">
+                    <button class="btn-secondary" onclick="statsManager.resetStats()">Clear Data</button>
+                    <button class="btn-secondary" id="refresh-stats-btn" onclick="handleStatsRefresh()">Refresh</button>
+                    <button class="btn-report" id="download-report-btn" onclick="generateReport()">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M7 10L12 15M12 15L17 10M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Download Report
+                    </button>
+                </div>
+            </section>
+
+            <div class="stats-summary">
+                <div class="summary-card">
+                    <div class="summary-label">Total Threats Detected</div>
+                    <div class="summary-value" id="stat-total">0</div>
+                    <div class="summary-sub">Non-clean incidents</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Threat Types</div>
+                    <div class="summary-value" id="stat-types">0</div>
+                    <div class="summary-sub">Distinct categories</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Dominant Threat</div>
+                    <div class="summary-value" id="stat-frequent">-</div>
+                    <div class="summary-sub" id="stat-frequent-count">0 images</div>
+                </div>
+            </div>
+
+            <div class="chart-section">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Contamination Trends</h3>
+                        <div class="time-filters">
+                            <button class="time-filter-btn active" onclick="statsManager.setFilter('daily')">Daily</button>
+                            <button class="time-filter-btn" onclick="statsManager.setFilter('weekly')">Weekly</button>
+                            <button class="time-filter-btn" onclick="statsManager.setFilter('monthly')">Monthly</button>
+                        </div>
+                    </div>
+                    <canvas id="mainChart"></canvas>
+                </div>
+
+                <div class="filter-list">
+                    <div class="filter-list-header">Filter by Category</div>
+                    <div class="filter-items" id="filter-list-items">
+                    </div>
+                </div>
+            </div>
+
+            <div class="history-container">
+                <div class="history-header">Recent Threat Analyses</div>
+                <div class="table-wrapper">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Primary Category</th>
+                                <th style="text-align:center;">Review</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination-controls">
+                    <span class="pagination-info" id="pagination-info">Showing 0-0 of 0</span>
+                    <button class="pagination-btn" id="prev-page-btn" onclick="statsManager.prevPage()">Previous</button>
+                    <button class="pagination-btn" id="next-page-btn" onclick="statsManager.nextPage()">Next</button>
+                </div>
+            </div>
+        </main>
+
+        <div id="review-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <span class="modal-close" onclick="closeReviewModal()">&times;</span>
+                <h3 id="modal-title">Detection Review</h3>
+                <img id="review-image" class="modal-img" src="" alt="Detection Snapshot">
+            </div>
+        </div>
+
+        <div id="report-progress-modal" class="modal-overlay hidden">
+            <div class="modal-content report-progress-content">
+                <h3>Generating Report...</h3>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="report-progress-bar"></div>
+                </div>
+                <p id="report-progress-text">Preparing data...</p>
+            </div>
+        </div>
+
+        <footer class="app-footer">
+            <div class="footer-content">
+                <span>© 2025 Food Hygiene Detector</span>
+                <span class="footer-dot">•</span>
+                <span>Powered by Advanced Computer Vision</span>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // ==============================
+        // CONFIG & DOM
+        // ==============================
+        const API_STATUS_ENDPOINT = '/api/status';
+        const PREDICT_ENDPOINT = '/api/predict_image';
+        const CAPTURE_ENDPOINT = '/api/capture_frame';
+        // Note: SNAPSHOT_BASE is no longer used for retrieval, only logic check
+        
+        const $ = (id) => document.getElementById(id);
+
+        // UI References
+        const backendStatusPill = $('backend-status-pill');
+        const backendStatusText = $('backend-status-text');
+        const uploadZone = $('upload-zone');
+        const imageInput = $('image-input');
+        const browseBtn = $('browse-btn');
+        const previewImage = $('preview-image');
+        const previewFrame = $('preview-frame');
+        const analyzeBtn = $('analyze-btn');
+        const uploadProgress = $('upload-progress');
+        const predictionsList = $('predictions-list');
+        const imageStatusCard = $('image-status-card');
+        const imageStatusLabel = $('image-status-label');
+        const imageStatusDescription = $('image-status-description');
+        const liveVideo = $('live-video-element'); // Updated from img to video
+        const livePlaceholder = $('live-placeholder');
+        const startPreviewBtn = $('start-preview-btn');
+        const captureAnalyzeBtn = $('capture-analyze-btn');
+        const stopPreviewBtn = $('stop-preview-btn');
+        const liveLog = $('live-log');
+        const liveIndicator = $('live-indicator');
+        const captureResultSection = $('capture-result-section');
+        const captureResultImage = $('capture-result-image');
+        const captureStatusCard = $('capture-status-card');
+        const captureStatusLabel = $('capture-status-label');
+        const captureStatusDescription = $('capture-status-description');
+        const capturePredictionsList = $('capture-predictions-list');
+        const refreshStatsBtn = $('refresh-stats-btn');
+
+        let selectedFile = null;
+        let previewActive = false;
+        let captureInProgress = false;
+        let videoStream = null;
+
+        // NEW Modal Logic for Base64 Data
+        function openReviewData(eventId) {
+            const event = statsManager.data.events.find(e => e.id === eventId);
+            if (event && event.snapshotData) {
+                const modal = $('review-modal');
+                const img = $('review-image');
+                $('modal-title').textContent = `Review: ${event.primaryCategory}`;
+                img.src = event.snapshotData; // Load Base64 directly
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeReviewModal() {
+            $('review-modal').classList.add('hidden');
+        }
+
+        // ==============================
+        // MAPPING & RULES
+        // ==============================
+        const NORMALIZE_MAP = {
+            'rat': 'Rodent', 'mouse': 'Rodent', 'rattus': 'Rodent', 'rodent': 'Rodent',
+            'cat': 'Cat', 'pet': 'Pet',
+            'dog': 'Dog', 'puppy': 'Dog', 'canine': 'Dog',
+            'cockroach': 'Insects', 'roach': 'Insects', 'ant': 'Insects', 'fly': 'Insects', 'insect': 'Insects', 'maggot': 'Insects',
+            'hair': 'Hair', 'fiber': 'Hair', 'strand': 'Hair','filament': 'Hair', 'thread': 'Hair',
+            'mold': 'Mold', 'fungus': 'Fungus', 'yeast': 'Yeast', 
+            'decay': 'Rotten', 'rotten': 'Rotten', 'spoiled': 'Rotten', 'decomposed': 'Rotten', 'putrid': 'Rotten',
+            'trash': 'Contaminant', 'garbage': 'Contaminant',
+            'clean': 'Clean', 'hygienic': 'Clean'
+        };
+
+        const SEVERITY_PRIORITY = [
+            'Clean', 'Contaminant', 'Hair', 'Yeast', 'Fungus', 'Mold', 'Rotten', 'Insects', 'Rodent'
+        ];
+
+        // Color mapping
+        const CATEGORY_COLORS = {
+            'Rodent': '#dc2626',      // Red
+            'Cat': '#636B2F',         // Olive
+            'Dog': '#2563eb',         // Blue
+            'Insects': '#ea580c',     // Orange-Red
+            'Rotten': '#87CEEB',      // Sky Blue
+            'Mold': '#65a30d',        // Lime Green
+            'Fungus': '#4d7c0f',      // Dark Green
+            'Yeast': '#ca8a04',       // Yellow-Gold
+            'Hair': '#9333ea',        // Purple
+            'Contaminant': '#0891b2', // Cyan
+            'Clean': '#10b981',       // Emerald Green
+            'Unknown': '#6b7280'      // Gray
+        };
+
+        // ==============================
+        // STATS MANAGER (Data Persistence)
+        // ==============================
+        class StatsManager {
+            constructor() {
+                this.STORAGE_KEY = 'food_hygiene_stats_v5_strict';
+                this.data = { events: [] };
+                this.currentView = 'daily'; 
+                this.typeFilter = null;
+                this.chartInstance = null;
+                this.currentPage = 1;
+                this.itemsPerPage = 10;
+                
+                this.load();
+                window.addEventListener('storage', (e) => {
+                    if (e.key === this.STORAGE_KEY) {
+                        this.load();
+                        this.render();
+                    }
+                });
+            }
+
+            load() {
+                try {
+                    const stored = localStorage.getItem(this.STORAGE_KEY);
+                    if (stored) this.data = JSON.parse(stored);
+                } catch (e) { console.error("Failed to load stats", e); }
+            }
+
+            save() {
+                try {
+                    if (this.data.events.length > 2000) this.data.events = this.data.events.slice(-2000);
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.data));
+                } catch (e) { console.error("Failed to save stats", e); }
+            }
+
+            resetStats() {
+                if(confirm("Clear all history?")) {
+                    this.data.events = [];
+                    this.save();
+                    this.render();
+                }
+            }
+
+            addAnalysisEvent(predictions, timestampIso, snapshotFilename, frameImageBase64) {
+                const ts = timestampIso ? new Date(timestampIso) : new Date();
+                const counts = {};
+                let hasDetections = false;
+
+                if (predictions && predictions.length > 0) {
+                    predictions.forEach(pred => {
+                        const rawLabel = (pred.label || '').toLowerCase();
+                        let category = 'Unknown';
+                        for (const key in NORMALIZE_MAP) {
+                            if (rawLabel.includes(key)) { category = NORMALIZE_MAP[key]; break; }
+                        }
+                        if (category === 'Unknown' && pred.category) {
+                            const parts = pred.category.split('_');
+                            if(parts.length > 1) category = parts[1].charAt(0) + parts[1].slice(1).toLowerCase(); 
+                            else category = parts[0].charAt(0) + parts[0].slice(1).toLowerCase();
+                        }
+                        if (!CATEGORY_COLORS.hasOwnProperty(category)) category = 'Unknown';
+                        if (category !== 'Clean' && category !== 'Unknown') {
+                            counts[category] = (counts[category] || 0) + 1;
+                            hasDetections = true;
+                        }
+                    });
+                }
+
+                let primaryCategory = 'Clean';
+                if (hasDetections) {
+                    let winningCat = null;
+                    let maxCount = -1;
+                    for (const [cat, count] of Object.entries(counts)) {
+                        if (count > maxCount) { maxCount = count; winningCat = cat; }
+                        else if (count === maxCount) {
+                            if (SEVERITY_PRIORITY.indexOf(cat) > SEVERITY_PRIORITY.indexOf(winningCat)) winningCat = cat;
+                        }
+                    }
+                    primaryCategory = winningCat;
+                }
+
+                if (primaryCategory === 'Clean') return;
+
+                const event = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    timestamp: ts.toISOString(),
+                    primaryCategory: primaryCategory,
+                    // Store base64 data directly
+                    snapshotData: frameImageBase64 ? "data:image/jpeg;base64," + frameImageBase64 : null
+                };
+
+                this.data.events.push(event);
+                
+                // Limit to last 15 items to prevent LocalStorage overflow
+                if (this.data.events.length > 15) {
+                    this.data.events = this.data.events.slice(this.data.events.length - 15);
+                }
+
+                this.save();
+                this.render();
+            }
+
+            setFilter(view) {
+                this.currentView = view;
+                document.querySelectorAll('.time-filter-btn').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+                this.updateChart();
+            }
+            setTypeFilter(type) {
+                this.typeFilter = this.typeFilter === type ? null : type;
+                this.render();
+            }
+            prevPage() { if (this.currentPage > 1) { this.currentPage--; this.updateHistoryTable(); } }
+            nextPage() {
+                const maxPages = Math.ceil(this.data.events.length / this.itemsPerPage);
+                if (this.currentPage < maxPages) { this.currentPage++; this.updateHistoryTable(); }
+            }
+            getGroupedData() {
+                const grouped = {};
+                const allCategories = new Set();
+                const filteredEvents = this.typeFilter ? this.data.events.filter(e => e.primaryCategory === this.typeFilter) : this.data.events;
+                filteredEvents.forEach(e => {
+                    if (e.primaryCategory === 'Clean') return;
+                    const date = new Date(e.timestamp);
+                    let key;
+                    if (this.currentView === 'daily') key = date.toLocaleDateString();
+                    else if (this.currentView === 'weekly') {
+                        const d = new Date(date);
+                        const day = d.getDay();
+                        const diff = d.getDate() - day;
+                        const weekStart = new Date(d.setDate(diff));
+                        key = `Week of ${weekStart.toLocaleDateString(undefined, {month:'numeric', day:'numeric'})}`;
+                    } else key = date.toLocaleDateString(undefined, {month: 'short', year: 'numeric'});
+                    if (!grouped[key]) grouped[key] = {};
+                    if (!grouped[key][e.primaryCategory]) grouped[key][e.primaryCategory] = 0;
+                    grouped[key][e.primaryCategory]++;
+                    allCategories.add(e.primaryCategory);
+                });
+                return { grouped, categories: Array.from(allCategories) };
+            }
+            render() { this.updateSummary(); this.updateFilterList(); this.updateHistoryTable(); this.updateChart(); }
+            updateSummary() {
+                const events = this.data.events;
+                $('stat-total').innerText = events.length;
+                const types = {};
+                events.forEach(e => { if(e.primaryCategory !== 'Clean') types[e.primaryCategory] = (types[e.primaryCategory] || 0) + 1; });
+                $('stat-types').innerText = Object.keys(types).length;
+                let maxType = '-', maxCount = 0;
+                for (const [t, c] of Object.entries(types)) { if (c > maxCount) { maxCount = c; maxType = t; } }
+                $('stat-frequent').innerText = maxType;
+                $('stat-frequent-count').innerText = maxCount > 0 ? `${maxCount} images` : '-';
+            }
+            updateFilterList() {
+                const container = $('filter-list-items');
+                container.innerHTML = '';
+                const counts = {};
+                this.data.events.forEach(e => counts[e.primaryCategory] = (counts[e.primaryCategory] || 0) + 1);
+                const allDiv = document.createElement('div');
+                allDiv.className = `filter-item ${this.typeFilter === null ? 'active' : ''}`;
+                allDiv.innerHTML = `<span>All Categories</span><span class="filter-count">${this.data.events.length}</span>`;
+                allDiv.onclick = () => this.setTypeFilter(null);
+                container.appendChild(allDiv);
+                Object.keys(counts).sort().forEach(type => {
+                    const div = document.createElement('div');
+                    div.className = `filter-item ${this.typeFilter === type ? 'active' : ''}`;
+                    div.innerHTML = `<span>${type}</span><span class="filter-count">${counts[type]}</span>`;
+                    div.onclick = () => this.setTypeFilter(type);
+                    container.appendChild(div);
+                });
+            }
+            updateHistoryTable() {
+                const tbody = $('history-table-body');
+                tbody.innerHTML = '';
+                const allEvents = this.data.events.slice().reverse();
+                const totalPages = Math.ceil(allEvents.length / this.itemsPerPage) || 1;
+                if (this.currentPage > totalPages) this.currentPage = totalPages;
+                if (this.currentPage < 1) this.currentPage = 1;
+                const startIdx = (this.currentPage - 1) * this.itemsPerPage;
+                const pageItems = allEvents.slice(startIdx, startIdx + this.itemsPerPage);
+                $('pagination-info').innerText = `Showing ${Math.min(startIdx + 1, allEvents.length)}-${Math.min(startIdx + this.itemsPerPage, allEvents.length)} of ${allEvents.length}`;
+                $('prev-page-btn').disabled = this.currentPage === 1;
+                $('next-page-btn').disabled = this.currentPage === totalPages;
+                if (pageItems.length === 0) { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">No records found</td></tr>'; return; }
+                
+                pageItems.forEach(e => {
+                    const tr = document.createElement('tr');
+                    // Use openReviewData(e.id) instead of passing the snapshot path
+                    const reviewHtml = e.snapshotData 
+                        ? `<span class="action-icon" onclick="openReviewData('${e.id}')" title="View Snapshot"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>` 
+                        : `<span style="color:#9ca3af;display:flex;justify-content:center;">--</span>`;
+                    tr.innerHTML = `<td>${new Date(e.timestamp).toLocaleString()}</td><td><strong>${e.primaryCategory}</strong></td><td>${reviewHtml}</td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+            updateChart() {
+                const ctx = $('mainChart').getContext('2d');
+                const { grouped, categories } = this.getGroupedData();
+                const labels = Object.keys(grouped);
+                const datasets = categories.map(cat => ({
+                    label: cat,
+                    data: labels.map(label => grouped[label][cat] || 0),
+                    backgroundColor: CATEGORY_COLORS[cat] || '#6366f1',
+                    borderRadius: 4,
+                    barThickness: 'flex',
+                    maxBarThickness: 30
+                }));
+                if (this.chartInstance) this.chartInstance.destroy();
+                this.chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: labels, datasets: datasets },
+                    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, position: 'bottom' }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}` } } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f3f4f6' }, stacked: false }, x: { grid: { display: false }, stacked: false } } }
+                });
+            }
+        }
+        const statsManager = new StatsManager();
+
+        // ==============================
+        // REPORT GENERATION
+        // ==============================
+        async function generateReport() {
+            const { jsPDF } = window.jspdf;
+            const progressModal = $('report-progress-modal');
+            const progressBar = $('report-progress-bar');
+            const progressText = $('report-progress-text');
+            progressModal.classList.remove('hidden');
+            function updateProgress(percent, text) { progressBar.style.width = percent + '%'; progressText.textContent = text; }
+
+            try {
+                updateProgress(10, 'Initializing report...');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const margin = 15;
+                const contentWidth = pageWidth - (margin * 2);
+                let yPos = margin;
+
+                // Header
+                updateProgress(20, 'Adding header...');
+                pdf.setFillColor(99, 102, 241); pdf.rect(0, 0, pageWidth, 35, 'F'); pdf.setTextColor(255, 255, 255); pdf.setFontSize(24); pdf.setFont(undefined, 'bold'); pdf.text('Food Hygiene Detection Report', margin, 20); pdf.setFontSize(10); pdf.setFont(undefined, 'normal'); pdf.text(`Generated: ${new Date().toLocaleString()}`, margin, 28);
+                yPos = 45; pdf.setTextColor(0, 0, 0);
+
+                // Stats Section
+                updateProgress(30, 'Adding stats...');
+                const stats = statsManager.data.events;
+                // ... (Stats calculation same as before) ...
+                
+                // Detection Images
+                updateProgress(85, 'Processing detection images...');
+                const eventsWithSnapshots = stats.filter(e => e.snapshotData).slice().reverse().slice(0, 12);
+                
+                // ... (Image adding logic: Note we now use e.snapshotData directly) ...
+                if (eventsWithSnapshots.length > 0) {
+                    const imagesPerRow = 3;
+                    const imageWidth = (contentWidth - 10) / imagesPerRow;
+                    const imageHeight = imageWidth * 0.75;
+                    
+                    for (let i = 0; i < eventsWithSnapshots.length; i++) {
+                        const event = eventsWithSnapshots[i];
+                        const col = i % imagesPerRow;
+                        const row = Math.floor(i / imagesPerRow);
+                        
+                        if (yPos > pageHeight - 60) { pdf.addPage(); yPos = margin; }
+
+                        const xPos = margin + (col * (imageWidth + 5));
+                        const currentYPos = yPos + (row % 4) * (imageHeight + 15);
+
+                        try {
+                            // Directly use Base64 string
+                            pdf.addImage(event.snapshotData, 'JPEG', xPos, currentYPos, imageWidth, imageHeight);
+                            pdf.setFontSize(7); pdf.setFont(undefined, 'bold');
+                            pdf.text(event.primaryCategory, xPos, currentYPos + imageHeight + 4);
+                            pdf.setFont(undefined, 'normal');
+                            pdf.text(new Date(event.timestamp).toLocaleDateString(), xPos, currentYPos + imageHeight + 8);
+                        } catch (err) { }
+
+                        if ((i + 1) % imagesPerRow === 0) { yPos += imageHeight + 15; }
+                    }
+                }
+
+                updateProgress(95, 'Finalizing PDF...');
+                const filename = `Food_Hygiene_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+                pdf.save(filename);
+                setTimeout(() => { progressModal.classList.add('hidden'); progressBar.style.width = '0%'; }, 1500);
+
+            } catch (error) {
+                console.error('Report error:', error);
+                alert('Error generating report: ' + error.message);
+                progressModal.classList.add('hidden');
+            }
+        }
+
+        // ==============================
+        // VIEW NAVIGATION & LOGIC
+        // ==============================
+        function switchView(viewName) {
+            const homeView = $('view-home');
+            const statsView = $('view-stats');
+            const navItems = document.querySelectorAll('.nav-item');
+            localStorage.setItem('currentView', viewName);
+            if (viewName === 'home') {
+                homeView.classList.remove('hidden'); statsView.classList.add('hidden'); navItems[0].classList.add('active'); navItems[1].classList.remove('active');
+            } else {
+                homeView.classList.add('hidden'); statsView.classList.remove('hidden'); navItems[0].classList.remove('active'); navItems[1].classList.add('active');
+                statsManager.render();
+            }
+        }
+        window.addEventListener('DOMContentLoaded', () => { switchView(localStorage.getItem('currentView') || 'home'); });
+
+        function handleStatsRefresh() {
+            const btn = $('refresh-stats-btn');
+            const originalText = btn.innerText;
+            btn.innerText = "Refreshing..."; btn.disabled = true; document.body.style.cursor = 'wait';
+            setTimeout(() => { statsManager.load(); statsManager.render(); btn.innerText = originalText; btn.disabled = false; document.body.style.cursor = 'default'; }, 800);
+        }
+
+        async function checkBackendStatus() {
+            try {
+                const res = await fetch(API_STATUS_ENDPOINT, { cache: 'no-store' });
+                if (!res.ok) throw new Error('Status error');
+                const data = await res.json();
+                backendStatusPill.classList.remove('status-pill-offline');
+                backendStatusPill.classList.add('status-pill-online');
+                backendStatusText.textContent = `Online • ${data.model_status || 'Ready'}`;
+            } catch (err) {
+                backendStatusPill.classList.remove('status-pill-online');
+                backendStatusPill.classList.add('status-pill-offline');
+                backendStatusText.textContent = 'Backend offline';
+            }
+        }
+        setInterval(checkBackendStatus, 30000); checkBackendStatus();
+
+        function renderPredictions(predictions, targetContainer = null) {
+            const container = targetContainer || predictionsList;
+            container.innerHTML = '';
+            if (!predictions || !predictions.length) {
+                const empty = document.createElement('div');
+                empty.className = 'predictions-empty';
+                empty.textContent = 'No contamination indicators detected.';
+                container.appendChild(empty);
+                return;
+            }
+            const sortedPreds = [...predictions].sort((a, b) => b.confidence - a.confidence).slice(0, 5);
+            const title = document.createElement('div');
+            title.className = 'predictions-title';
+            title.textContent = 'Top Detections';
+            container.appendChild(title);
+            sortedPreds.forEach(pred => {
+                const row = document.createElement('div');
+                row.className = 'prediction-row';
+                const label = document.createElement('span');
+                label.className = 'prediction-label';
+                label.textContent = pred.label;
+                const conf = document.createElement('span');
+                conf.className = 'prediction-confidence';
+                conf.textContent = `${(pred.confidence * 100).toFixed(1)}%`;
+                row.appendChild(label);
+                row.appendChild(conf);
+                container.appendChild(row);
+            });
+        }
+
+        function handleFileSelection(file) {
+            if (!file) return;
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewImage.style.display = 'block';
+                previewFrame.classList.add('has-image');
+                const placeholder = previewFrame.querySelector('.placeholder-text');
+                if (placeholder) placeholder.style.display = 'none';
+                imageStatusLabel.className = 'status-tag status-tag-idle';
+                imageStatusLabel.textContent = 'Ready';
+                imageStatusDescription.textContent = 'Click "Analyze Image" to start.';
+            };
+            reader.readAsDataURL(file);
+            analyzeBtn.disabled = false;
+        }
+        uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+        uploadZone.addEventListener('dragleave', (e) => { e.preventDefault(); uploadZone.classList.remove('drag-over'); });
+        uploadZone.addEventListener('drop', (e) => { e.preventDefault(); uploadZone.classList.remove('drag-over'); if(e.dataTransfer.files?.[0]) handleFileSelection(e.dataTransfer.files[0]); });
+        browseBtn.addEventListener('click', () => imageInput.click());
+        imageInput.addEventListener('change', (e) => { if(e.target.files?.[0]) handleFileSelection(e.target.files[0]); });
+
+        analyzeBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            analyzeBtn.disabled = true;
+            uploadProgress.classList.remove('hidden');
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+                const res = await fetch(PREDICT_ENDPOINT, { method: 'POST', body: formData });
+                if (!res.ok) throw new Error('Analysis failed');
+                const data = await res.json();
+                renderPredictions(data.predictions);
+                // PASSING Base64 IMAGE
+                statsManager.addAnalysisEvent(data.predictions, data.timestamp_iso, null, data.frame_image);
+                updateImageStatusUI(data.predictions);
+                if (data.frame_image) { previewImage.src = 'data:image/jpeg;base64,' + data.frame_image; }
+            } catch (err) { console.error(err); alert("Analysis failed. Check backend console."); }
+            finally { uploadProgress.classList.add('hidden'); analyzeBtn.disabled = false; }
+        });
+
+        // ==============================
+        // NEW SMART CLIENT WEBCAM LOGIC
+        // ==============================
+        function logLive(message) {
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            liveLog.prepend(line);
+            if(liveLog.childElementCount > 30) liveLog.removeChild(liveLog.lastChild);
+        }
+
+        async function startPreview() {
+            if (previewActive) return;
+            try {
+                // Request Camera Access (Smart Client)
+                videoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } 
+                });
+                liveVideo.srcObject = videoStream;
+                liveVideo.play();
+                previewActive = true;
+                livePlaceholder.classList.add('hidden');
+                liveVideo.classList.remove('hidden');
+                liveIndicator.classList.add('live-indicator-on');
+                startPreviewBtn.disabled = true;
+                captureAnalyzeBtn.disabled = false;
+                stopPreviewBtn.disabled = false;
+                logLive('Camera connected successfully');
+            } catch (err) {
+                console.error("Camera Error:", err);
+                alert("Could not access camera: " + err.message);
+                logLive('Error: Camera access denied');
+            }
+        }
+
+        function stopPreview() {
+            if (!previewActive) return;
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            previewActive = false;
+            liveVideo.classList.add('hidden');
+            livePlaceholder.classList.remove('hidden');
+            liveIndicator.classList.remove('live-indicator-on');
+            startPreviewBtn.disabled = false;
+            captureAnalyzeBtn.disabled = true;
+            stopPreviewBtn.disabled = true;
+            logLive('Preview stopped');
+        }
+
+        async function captureAndAnalyze() {
+            if (captureInProgress || !previewActive) return;
+            captureInProgress = true;
+            captureAnalyzeBtn.disabled = true;
+            logLive('Capturing frame...');
+            try {
+                // 1. Capture to canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = liveVideo.videoWidth;
+                canvas.height = liveVideo.videoHeight;
+                canvas.getContext('2d').drawImage(liveVideo, 0, 0);
+                
+                // 2. Compress (Client-Side)
+                const imageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                logLive('Frame captured. Sending...');
+
+                // 3. Send to Server
+                const res = await fetch(CAPTURE_ENDPOINT, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageBase64 })
+                });
+                if (!res.ok) throw new Error('Request failed');
+                const data = await res.json();
+                
+                logLive(`Complete: ${data.total_detections} items found`);
+                if (data.frame_image) captureResultImage.src = 'data:image/jpeg;base64,' + data.frame_image;
+                
+                renderPredictions(data.predictions, capturePredictionsList);
+                // 4. Save to History (Base64)
+                statsManager.addAnalysisEvent(data.predictions, data.timestamp_iso, null, data.frame_image);
+                updateCaptureStatusUI(data.predictions);
+                captureResultSection.classList.remove('hidden');
+            } catch (err) {
+                logLive('Error: ' + err.message);
+            } finally {
+                captureInProgress = false;
+                captureAnalyzeBtn.disabled = !previewActive;
+            }
+        }
+
+        startPreviewBtn.addEventListener('click', startPreview);
+        stopPreviewBtn.addEventListener('click', stopPreview);
+        captureAnalyzeBtn.addEventListener('click', captureAndAnalyze);
+
+        function updateImageStatusUI(preds) {
+             let maxThreat = 0;
+             if(preds) preds.forEach(p => maxThreat = Math.max(maxThreat, p.threat_level));
+             imageStatusCard.className = 'status-card';
+             imageStatusLabel.className = 'status-tag';
+             if(maxThreat >= 5) {
+                 imageStatusCard.classList.add('status-critical'); imageStatusLabel.classList.add('status-tag-critical');
+                 imageStatusLabel.textContent = 'Critical'; imageStatusDescription.textContent = 'Contamination detected. Immediate action required.';
+             } else if(maxThreat >= 3) {
+                 imageStatusCard.classList.add('status-warning'); imageStatusLabel.classList.add('status-tag-warning');
+                 imageStatusLabel.textContent = 'Warning'; imageStatusDescription.textContent = 'Potential hygiene issues detected.';
+             } else {
+                 imageStatusCard.classList.add('status-safe'); imageStatusLabel.classList.add('status-tag-safe');
+                 imageStatusLabel.textContent = 'Clean'; imageStatusDescription.textContent = 'No visual contamination indicators found.';
+             }
+        }
+
+        function updateCaptureStatusUI(preds) {
+            let maxThreat = 0;
+            if(preds) preds.forEach(p => maxThreat = Math.max(maxThreat, p.threat_level));
+            captureStatusCard.className = 'status-card';
+            captureStatusLabel.className = 'status-tag';
+            if(maxThreat >= 5) {
+                 captureStatusCard.classList.add('status-critical'); captureStatusLabel.classList.add('status-tag-critical');
+                 captureStatusLabel.textContent = 'Critical'; captureStatusDescription.textContent = 'Contamination detected.';
+             } else if(maxThreat >= 3) {
+                 captureStatusCard.classList.add('status-warning'); captureStatusLabel.classList.add('status-tag-warning');
+                 captureStatusLabel.textContent = 'Warning'; captureStatusDescription.textContent = 'Potential issues found.';
+             } else {
+                 captureStatusCard.classList.add('status-safe'); captureStatusLabel.classList.add('status-tag-safe');
+                 captureStatusLabel.textContent = 'Clean'; captureStatusDescription.textContent = 'Environment appears hygienic.';
+             }
+        }
+
+        function closeCaptureResult() { $('capture-result-section').classList.add('hidden'); }
+    </script>
+</body>
+</html>

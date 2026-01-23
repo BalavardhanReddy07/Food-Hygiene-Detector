@@ -1,0 +1,5 @@
+flask
+numpy
+google-generativeai
+opencv-python-headless
+gunicorn
