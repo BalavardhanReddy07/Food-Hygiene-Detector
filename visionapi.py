@@ -11,18 +11,27 @@ from flask import Flask, jsonify, request, Response, send_from_directory
 import google.generativeai as genai
 
 from realtime_google_api import CONFIG, ThreatCategorizer, Visualizer, DetectionAnalyzer
-from setup_credentials import setup_credentials
 
 # ========================
 # SETUP
 # ========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# NOTE: We no longer create a snapshots folder because we are using browser storage.
+# --- FIXED: Configure API Key directly from Environment Variables ---
+# This replaces the need for 'setup_credentials.py'
+api_key = os.environ.get("GEMINI_API_KEY")
 
-if not setup_credentials():
-    print("CRITICAL: Failed to setup Gemini API. Exiting...")
+if not api_key:
+    print("CRITICAL: GEMINI_API_KEY not found in environment variables.")
+    # On Render, this will cause the deployment to fail if the key isn't set
     exit(1)
+
+try:
+    genai.configure(api_key=api_key)
+except Exception as e:
+    print(f"Error configuring Gemini API: {e}")
+    exit(1)
+# ------------------------------------------------------------------
 
 app = Flask(__name__, static_folder=BASE_DIR, template_folder=BASE_DIR)
 
